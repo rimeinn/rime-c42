@@ -1,8 +1,9 @@
 ---
 name: c42
 version: "1"
-sort: original
+sort: by_weight
 columns:
   - text
   - code
+  - weight
 ...

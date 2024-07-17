@@ -10,10 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v5
         with:
-          python-version: '3.12'
-      - run: python build.py
+          node-version: '20'
+      - run: npm install
+      - run: npm run build
       - run: cp README.md CHANGELOG.md LICENSE build/
       - uses: peaceiris/actions-gh-pages@v3
         with:
