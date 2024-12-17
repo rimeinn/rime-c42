@@ -1,5 +1,3 @@
-local rime = require "c42.lib"
-
 local this = {}
 
 ---@param env Env
@@ -7,12 +5,13 @@ function this.init(env)
   this.lookup_tags = { "extra" }
   ---@type { string : string }
   this.radicals = {}
-  local path = rime.api.get_user_data_dir() .. "/lua/c42/disassembly.txt"
+  local path = rime_api.get_user_data_dir() .. "/lua/c42/assembly.txt"
   local file = io.open(path, "r")
   if not file then
     return
   end
   for line in file:lines() do
+    ---@type string, string
     local char, radical = line:match("([^\t]+)\t([^\t]+)")
     this.radicals[char] = radical
   end
@@ -38,7 +37,7 @@ function this.func(translation, env)
     if radical then
       candidate.comment = candidate.comment .. string.format("［%s］", this.radicals[candidate.text])
     end
-    rime.yield(candidate)
+    yield(candidate)
   end
   return
 end

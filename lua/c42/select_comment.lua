@@ -1,5 +1,3 @@
-local rime = require "c42.lib"
-
 local this = {}
 
 ---@param env Env
@@ -45,7 +43,7 @@ function this.func(translation, env)
     end
     ::continue::
     i = i + 1
-    rime.yield(candidate)
+    yield(candidate)
   end
 end
 
