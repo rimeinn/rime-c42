@@ -1,9 +1,8 @@
 -- 顶功处理器
--- 通用（不包含声笔系列码的特殊逻辑）
 -- 本处理器能够支持所有的规则顶功模式
 -- 根据当前编码和新输入的按键来决定是否将当前编码或其一部分的首选顶上屏
 
-local rime = require "c42.lib"
+local c42  = require "c42.c42"
 
 local this = {}
 
@@ -52,20 +51,20 @@ function this.func(key_event, env)
   local context = env.engine.context
   local _auto_commit = context:get_option("_auto_commit")
   if key_event:release() or key_event:shift() or key_event:alt() or key_event:ctrl() or key_event:caps() then
-    return rime.process_results.kNoop
+    return c42.kNoop
   end
   -- 取出输入中当前正在翻译的一部分
-  local input = rime.current(context)
+  local input = c42.current(context)
   if not input then
-    return rime.process_results.kNoop
+    return c42.kNoop
   end
   -- Rime 有一个 bug，在按句号键之后的那个字词的编码的会有一个隐藏的 "."
   -- 这导致顶功判断失败，所以先屏蔽了。但是这个对用 "." 作为编码的方案会有影响
   if input == "." then
     context:pop_input(1)
-    input = rime.current(context)
+    input = c42.current(context)
     if not input then
-      return rime.process_results.kNoop
+      return c42.kNoop
     end
   end
   local incoming = utf8.char(key_event.keycode)
@@ -79,10 +78,10 @@ function this.func(key_event, env)
     if when_not and context:get_option(when_not) then
       goto continue
     end
-    if not rime.match(input, rule.match) then
+    if not rime_api.regex_match(input, rule.match) then
       goto continue
     end
-    if not rime.match(incoming, rule.accept) then
+    if not rime_api.regex_match(incoming, rule.accept) then
       goto continue
     end
     if rule.conditional then
@@ -114,7 +113,7 @@ function this.func(key_event, env)
     ::continue::
   end
   ::finish::
-  return rime.process_results.kNoop
+  return c42.kNoop
 end
 
 return this

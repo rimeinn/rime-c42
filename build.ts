@@ -28,6 +28,14 @@ function getReadings() {
   return readings;
 }
 
+function getReadingsExtended() {
+  const readings: ReadingRecord[] = parse(
+    readFileSync("assets/readings-extended.csv", "utf-8"),
+    { delimiter: "\t", cast: true, columns: true }
+  );
+  return readings;
+}
+
 function getAnalysis() {
   const analysis: { name: string; analysis: string }[] = parse(
     readFileSync("assets/analysis.csv", "utf-8"),
@@ -55,24 +63,53 @@ function getFrequency() {
   return { frequency, singleFrequency };
 }
 
+function assembleRule(
+  analysis: Map<string, string[]>,
+  name: string,
+  pinyin: string
+) {
+  const elements = structuredClone(analysis.get(name));
+  if (!elements) return;
+  const firstLetter = pinyin[0]!;
+  const lastLetter = pinyin[pinyin.length - 2]!;
+  if (elements.length < 3) {
+    elements.push(firstLetter.toUpperCase());
+  }
+  if (elements.length < 3) {
+    elements.push(lastLetter.toUpperCase());
+  }
+  return elements;
+}
+
+function wordRule(elements: string[][]) {
+  const result: string[] = [];
+  const [c1, c2, c3] = elements;
+  const c0 = elements.at(-1)!;
+  switch (elements.length) {
+    case 2:
+      result.push(c1[0], c1[1], c2[0], c2[1]);
+      break;
+    case 3:
+      result.push(c1[0], c2[0], c3[0], c3[1]);
+      break;
+    default:
+      result.push(c1[0], c2[0], c3[0], c0[0]);
+      break;
+  }
+  return result;
+}
+
 function assemble() {
   const readings = getReadings();
+  const readingsExtended = getReadingsExtended();
   const analysis = getAnalysis();
   // 1. 为所有有拆分、有读音的字生成序列表
   const assemblyList: Assembly[] = [];
   const assemblyHash = new Map<string, number>();
   const finished = new Set<string>();
   for (const { name, pinyin, importance } of readings) {
-    const elements = structuredClone(analysis.get(name));
+    const elements = assembleRule(analysis, name, pinyin);
     if (!elements) continue;
-    const firstLetter = pinyin[0]!;
-    const lastLetter = pinyin[pinyin.length - 2]!;
-    if (elements.length < 3) {
-      elements.push(firstLetter.toUpperCase());
-    }
-    if (elements.length < 3) {
-      elements.push(lastLetter.toUpperCase());
-    }
     const hash = name + "," + elements.join(",");
     if (assemblyHash.has(hash)) {
       const index = assemblyHash.get(hash)!;
@@ -102,7 +139,34 @@ function assemble() {
       importance: 100,
     });
   }
-  return assemblyList;
+  // 3. 为所有有拆分、有读音的词生成序列表
+  const assemblyExtended: Assembly[] = [];
+  for (const { name, pinyin, importance } of readingsExtended) {
+    const characters = [...name];
+    const syllables = pinyin.split(" ");
+    console.assert(characters.length === syllables.length);
+    const zipped = characters.map(
+      (character, index) => [character, syllables[index]] as const
+    );
+    const elements: string[][] = [];
+    let failed = false;
+    for (const [character, syllable] of zipped) {
+      const sub = assembleRule(analysis, character, syllable);
+      if (!sub) {
+        failed = true;
+        break;
+      }
+      elements.push(sub);
+    }
+    if (failed) continue;
+    const result = wordRule(elements);
+    assemblyExtended.push({
+      name,
+      elements: result,
+      importance,
+    });
+  }
+  return { assemblyList, assemblyExtended };
 }
 
 interface RootRecord {
@@ -135,7 +199,7 @@ function toFull(element: string) {
 }
 
 function main() {
-  const assemblyList = assemble();
+  const { assemblyList, assemblyExtended } = assemble();
   const keyMap = getKeyMap();
   const { frequency, singleFrequency } = getFrequency();
   const brevity = new Map(
@@ -174,6 +238,15 @@ function main() {
     } else {
       dictionary.push(`${name}\t${code}\t${freq}`);
     }
+  }
+  for (const { name, elements, importance } of assemblyExtended) {
+    const freq = Math.round(
+      ((frequency.get(name) ?? 0) * importance) / 100
+    );
+    const code = elements
+      .map((element) => keyMap.get(element)?.key ?? element)
+      .join("");
+    dictionary.push(`${name}\t${code}\t${freq}`);
   }
   writeFileSync("build/c42.dict.yaml", dictionary.join("\n"));
 

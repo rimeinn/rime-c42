@@ -20,6 +20,8 @@ switches:
     states: [ 汉字, 漢字 ]
   - name: ascii_punct
     states: [ 。，, ．， ]
+  - name: popping_method
+    states: [ 四二, 五二 ]
   - name: prediction
     reset: 1
     states: [ 关闭, 联想 ]
@@ -40,6 +42,7 @@ engine:
     - punctuator
     - selector
     - navigator
+    - lua_processor@*c42.key_binder
     - express_editor
   segmentors:
     - ascii_segmentor
@@ -56,6 +59,7 @@ engine:
     - script_translator@pinyin_simp
     - history_translator
   filters:
+    - lua_filter@*c42.assist
     - simplifier
     - reverse_lookup_filter@reverse_lookup
     - lua_filter@*c42.predictor
@@ -72,9 +76,17 @@ speller:
     - derive/[A-Z\?]+/`/
     - xlit/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/
   popping:
-    - match: "[a-z;][a-z;,./][a-z;]"
+    - when_not: popping_method
+      match: "[a-z;][a-z;,./][a-z;]"
       accept: "[a-z;,./]"
       prefix: 2
+    - when: popping_method
+      match: "[a-z;][a-z;,./][a-z;][a-z;,./]"
+      accept: "[a-z;]"
+      prefix: 2
+    - when: popping_method
+      match: "[a-z;][a-z;,./][a-z;][a-z;,./]"
+      accept: "[,./]"
     - match: "[a-z;][a-z;,./]"
       accept: "[,./]"
 
@@ -120,6 +132,7 @@ translator:
   encode_commit_history: false
   enable_user_dict: false
   enable_completion: false
+  enable_sentence: false
   preedit_format:
     - xform/`/\?/
 

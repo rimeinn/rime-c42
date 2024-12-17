@@ -1,12 +1,12 @@
-local lib = require "c42.lib"
+local c42 = require "c42.c42"
 local this = {}
 
 local XK_Return = 0xff0d
 
 ---@param env Env
 function this.init(env)
-  this.memory = lib.Memory1(env.engine, env.engine.schema, "predictor")
-  this.reverse = lib.ReverseLookup(env.engine.schema.schema_id)
+  this.memory = Memory(env.engine, env.engine.schema, "predictor")
+  this.reverse = ReverseLookup(env.engine.schema.schema_id)
   env.engine.context.option_update_notifier:connect(function(ctx, name)
     if name == "encode" then
       local encode = ctx:get_option("encode")
@@ -29,14 +29,14 @@ function this.func(key_event, env)
     if context:get_option("encode") then
       local phrase = context:get_commit_text()
       local first_char = utf8.char(utf8.codepoint(phrase))
-      local entry = lib.DictEntry()
+      local entry = DictEntry()
       entry.text = phrase
       entry.custom_code = first_char .. " "
       this.memory:update_userdict(entry, 1, "")
-      return lib.process_results.kNoop
+      return c42.kNoop
     end
   end
-  return lib.process_results.kNoop
+  return c42.kNoop
 end
 
 return this
